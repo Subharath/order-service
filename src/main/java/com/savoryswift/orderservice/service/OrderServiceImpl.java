@@ -1,6 +1,8 @@
 package com.savoryswift.orderservice.service;
 
+import com.savoryswift.orderservice.config.RabbitMQConfig;
 import com.savoryswift.orderservice.dto.OrderCheckoutRequestDTO;
+import com.savoryswift.orderservice.dto.OrderDeliveryMessage;
 import com.savoryswift.orderservice.dto.OrderRequestDTO;
 import com.savoryswift.orderservice.entity.*;
 import com.savoryswift.orderservice.mapper.OrderMapper;
@@ -8,14 +10,13 @@ import com.savoryswift.orderservice.repository.OrderRepository;
 import com.savoryswift.orderservice.repository.CartRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
-
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -24,16 +25,19 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository) {
+    public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository, RabbitTemplate rabbitTemplate) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Autowired
     private OrderMapper orderMapper;
 
+    @Override
     public Order placeOrder(OrderRequestDTO requestDTO) {
         Order order = orderMapper.toEntity(requestDTO);
         return orderRepository.save(order);
@@ -65,7 +69,24 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        if (status == OrderStatus.READY_FOR_PICKUP) {
+            OrderDeliveryMessage message = new OrderDeliveryMessage(
+                    order.getId(),
+                    order.getUserId(),
+                    order.getDeliveryAddress().getLatitude(),
+                    order.getDeliveryAddress().getLongitude()
+            );
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.ORDER_DELIVERY_EXCHANGE,
+                    RabbitMQConfig.ORDER_DELIVERY_ROUTING_KEY,
+                    message
+            );
+            log.info("📦 Sent order delivery message to RabbitMQ for orderId: {}", orderId);
+        }
+
+        return savedOrder;
     }
 
     @Override
@@ -101,7 +122,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order convertCartToOrder(OrderCheckoutRequestDTO requestDTO) {
-        // 1. Fetch Cart
         Cart cart = cartRepository.findByUserIdAndCheckedOutFalse(requestDTO.getUserId())
                 .orElseThrow(() -> new RuntimeException("Cart not found or already checked out"));
 
@@ -109,7 +129,6 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty");
         }
 
-        // 2. Map Cart Items to Order Items
         List<OrderItem> orderItems = cart.getItems().stream()
                 .map(cartItem -> new OrderItem(
                         cartItem.getMenuItemId(),
@@ -119,7 +138,6 @@ public class OrderServiceImpl implements OrderService {
                         cartItem.getSpecialInstructions()
                 )).toList();
 
-        // 3. Build Address
         Address address = Address.builder()
                 .street(requestDTO.getStreet())
                 .city(requestDTO.getCity())
@@ -129,7 +147,6 @@ public class OrderServiceImpl implements OrderService {
                 .longitude(requestDTO.getLongitude())
                 .build();
 
-        // 4. Create Order
         Order order = new Order();
         order.setUserId(requestDTO.getUserId());
         order.setRestaurantId(cart.getRestaurantId());
@@ -137,7 +154,6 @@ public class OrderServiceImpl implements OrderService {
         order.setDeliveryAddress(address);
         order.setCustomerEmail(requestDTO.getCustomerEmail());
         order.setCustomerPhoneNumber(requestDTO.getCustomerPhoneNumber());
-
         order.setDeliveryFee(cart.getDeliveryFee());
         order.setTotalAmount(cart.getTotal());
         order.setStatus(OrderStatus.CREATED);
@@ -145,12 +161,12 @@ public class OrderServiceImpl implements OrderService {
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
 
-        // 5. Save Order
         Order savedOrder = orderRepository.save(order);
 
-        // 6. Mark cart as checked out
         cart.setCheckedOut(true);
         cartRepository.save(cart);
+
+        log.info("🛒 Cart converted to order for userId: {}", requestDTO.getUserId());
 
         return savedOrder;
     }
@@ -160,15 +176,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        order.setStatus(OrderStatus.PAID); // or your equivalent
+        order.setStatus(OrderStatus.PAID);
         order.setPaymentStatus(PaymentStatus.COMPLETED);
+        order.setUpdatedAt(LocalDateTime.now());
 
         orderRepository.save(order);
         log.info("💰 Order marked as PAID: {}", orderId);
     }
-
-
-
-
-
 }
