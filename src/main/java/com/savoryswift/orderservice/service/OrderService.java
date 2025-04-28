@@ -1,5 +1,6 @@
 package com.savoryswift.orderservice.service;
 
+import com.savoryswift.orderservice.dto.OrderCheckoutRequestDTO;
 import com.savoryswift.orderservice.dto.OrderRequestDTO;
 import com.savoryswift.orderservice.entity.Order;
 import com.savoryswift.orderservice.entity.OrderStatus;
@@ -24,6 +25,10 @@ public interface OrderService {
 
     List<Order> getOrdersByRestaurantId(String restaurantId);
 
-    Order convertCartToOrder(String userId, String deliveryAddressId);
+    //Order convertCartToOrder(String userId, String deliveryAddressId);
+
+    Order convertCartToOrder(OrderCheckoutRequestDTO requestDTO);
+
+    void markOrderAsPaid(String orderId);
 
 }

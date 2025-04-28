@@ -1,6 +1,7 @@
 package com.savoryswift.orderservice.controller;
 
 import com.savoryswift.orderservice.dto.CartToOrderRequestDTO;
+import com.savoryswift.orderservice.dto.OrderCheckoutRequestDTO;
 import com.savoryswift.orderservice.dto.OrderRequestDTO;
 import com.savoryswift.orderservice.entity.Order;
 import com.savoryswift.orderservice.entity.OrderStatus;
@@ -77,9 +78,15 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByRestaurantId(restaurantId));
     }
 
-    @PostMapping("/cart/checkout")
+    /*@PostMapping("/cart/checkout")
     public ResponseEntity<Order> checkoutCart(@RequestBody CartToOrderRequestDTO dto) {
         Order order = orderService.convertCartToOrder(dto.getUserId(), dto.getDeliveryAddressId());
+        return ResponseEntity.ok(order);
+    }*/
+    //modded
+    @PostMapping("/cart/checkout")
+    public ResponseEntity<Order> checkoutCart(@RequestBody OrderCheckoutRequestDTO requestDTO) {
+        Order order = orderService.convertCartToOrder(requestDTO);
         return ResponseEntity.ok(order);
     }
 

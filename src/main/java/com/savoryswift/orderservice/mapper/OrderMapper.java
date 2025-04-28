@@ -38,7 +38,7 @@ public class OrderMapper {
         return Address.builder()
                 .street(dto.getStreet())
                 .city(dto.getCity())
-                .state(dto.getState())
+                //.state(dto.getState())
                 .postalCode(dto.getPostalCode())
                 .country(dto.getCountry())
                 .latitude(dto.getLatitude())

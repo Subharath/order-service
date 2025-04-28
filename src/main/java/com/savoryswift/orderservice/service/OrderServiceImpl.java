@@ -1,10 +1,13 @@
 package com.savoryswift.orderservice.service;
 
+import com.savoryswift.orderservice.dto.OrderCheckoutRequestDTO;
 import com.savoryswift.orderservice.dto.OrderRequestDTO;
 import com.savoryswift.orderservice.entity.*;
 import com.savoryswift.orderservice.mapper.OrderMapper;
 import com.savoryswift.orderservice.repository.OrderRepository;
 import com.savoryswift.orderservice.repository.CartRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +15,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+
+
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -93,9 +100,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Order convertCartToOrder(String userId, String deliveryAddressId) {
+    public Order convertCartToOrder(OrderCheckoutRequestDTO requestDTO) {
         // 1. Fetch Cart
-        Cart cart = cartRepository.findByUserIdAndCheckedOutFalse(userId)
+        Cart cart = cartRepository.findByUserIdAndCheckedOutFalse(requestDTO.getUserId())
                 .orElseThrow(() -> new RuntimeException("Cart not found or already checked out"));
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
@@ -112,31 +119,55 @@ public class OrderServiceImpl implements OrderService {
                         cartItem.getSpecialInstructions()
                 )).toList();
 
+        // 3. Build Address
+        Address address = Address.builder()
+                .street(requestDTO.getStreet())
+                .city(requestDTO.getCity())
+                .postalCode(requestDTO.getPostalCode())
+                .country(requestDTO.getCountry())
+                .latitude(requestDTO.getLatitude())
+                .longitude(requestDTO.getLongitude())
+                .build();
 
-
-
-        // 3. Create Order
+        // 4. Create Order
         Order order = new Order();
-        order.setUserId(userId);
+        order.setUserId(requestDTO.getUserId());
         order.setRestaurantId(cart.getRestaurantId());
         order.setItems(orderItems);
-        order.setDeliveryAddress(cart.getDeliveryAddress()); // fallback to deliveryAddressId later if needed
+        order.setDeliveryAddress(address);
+        order.setCustomerEmail(requestDTO.getCustomerEmail());
+        order.setCustomerPhoneNumber(requestDTO.getCustomerPhoneNumber());
+
         order.setDeliveryFee(cart.getDeliveryFee());
-        order.setTotalAmount(cart.getTotalAmount());
+        order.setTotalAmount(cart.getTotal());
         order.setStatus(OrderStatus.CREATED);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
 
-        // 4. Save Order
+        // 5. Save Order
         Order savedOrder = orderRepository.save(order);
 
-        // 5. Mark cart as checked out (for traceability or reuse later)
+        // 6. Mark cart as checked out
         cart.setCheckedOut(true);
         cartRepository.save(cart);
 
         return savedOrder;
     }
+
+    @Override
+    public void markOrderAsPaid(String orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        order.setStatus(OrderStatus.PAID); // or your equivalent
+        order.setPaymentStatus(PaymentStatus.COMPLETED);
+
+        orderRepository.save(order);
+        log.info("💰 Order marked as PAID: {}", orderId);
+    }
+
+
 
 
 

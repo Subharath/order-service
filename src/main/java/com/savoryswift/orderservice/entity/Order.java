@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,8 +20,6 @@ public class Order {
 
     private String userId;
     private String restaurantId;
-    @Setter
-    @Getter
     private List<OrderItem> items;
     private Double totalAmount;
 
@@ -28,6 +27,8 @@ public class Order {
     private PaymentStatus paymentStatus;
 
     private Address deliveryAddress;
+    private String customerEmail;
+    private String customerPhoneNumber;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -37,9 +38,6 @@ public class Order {
     private String trackingId;
 
     public void setDeliveryFee(double deliveryFee) {
-    }
-
-    public void setDeliveryAddress(String deliveryAddress) {
     }
 
 }

@@ -16,4 +16,7 @@ public class OrderRequestDTO {
     private List<OrderItemDTO> items;
     private Double totalAmount;
     private AddressDTO deliveryAddress;
+    private String customerEmail;
+    private String customerPhoneNumber;
+
 }

@@ -13,6 +13,7 @@ public class CartMapper {
     public Cart toEntity(CartRequestDTO dto) {
         return Cart.builder()
                 .userId(dto.getUserId())
+                .restaurantId(dto.getRestaurantId())
                 .items(dto.getItems().stream()
                         .map(this::toEntity)
                         .collect(Collectors.toList()))
@@ -33,6 +34,7 @@ public class CartMapper {
         return CartResponseDTO.builder()
                 .id(cart.getId())
                 .userId(cart.getUserId())
+                .restaurantId(cart.getRestaurantId())
                 .items(cart.getItems().stream()
                         .map(this::toDTO)
                         .collect(Collectors.toList()))

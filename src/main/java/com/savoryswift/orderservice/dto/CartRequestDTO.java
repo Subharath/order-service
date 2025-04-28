@@ -10,5 +10,7 @@ import java.util.List;
 @Builder
 public class CartRequestDTO {
     private String userId;
+    private String restaurantId;
     private List<CartItemDTO> items;
+
 }

@@ -1,4 +1,4 @@
-package com.savoryswift.orderservice.entity;
+package com.savoryswift.orderservice.dto;
 
 import lombok.*;
 
@@ -6,13 +6,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Address {
+public class OrderCheckoutRequestDTO {
+    private String userId;
+    private String customerEmail;
+    private String customerPhoneNumber;
     private String street;
     private String city;
-   // private String state;
     private String postalCode;
     private String country;
     private Double latitude;
     private Double longitude;
 }
-

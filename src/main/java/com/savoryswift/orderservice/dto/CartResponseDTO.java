@@ -11,6 +11,7 @@ import java.util.List;
 public class CartResponseDTO {
     private String id;
     private String userId;
+    private String restaurantId;
     private List<CartItemDTO> items;
     private double subtotal;
     private double deliveryFee;
